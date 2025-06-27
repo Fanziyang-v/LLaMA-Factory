@@ -1,4 +1,22 @@
 {
+  "open_r1__mixture_of_thoughts_code": {
+    "file_name": "open-r1/open-r1--mixture-of-thoughts-code.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "num_tokens": "num_tokens",
+      "source": "source"
+    }
+  },
+  "open_r1__mixture_of_thoughts_math": {
+    "file_name": "open-r1/open-r1--mixture-of-thoughts-math.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages",
+      "num_tokens": "num_tokens",
+      "source": "source"
+    }
+  },
   "identity": {
     "file_name": "identity.json"
   },
