@@ -177,3 +177,6 @@ wandb/
 swanlog/
 generated_predictions.jsonl
 predictions_score.json
+
+# open-r1 distillation dataset.
+open-r1/
