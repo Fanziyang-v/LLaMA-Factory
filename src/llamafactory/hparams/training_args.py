@@ -14,7 +14,7 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import Literal, Optional, Union
+from typing import Callable, Literal, Optional, Union
 
 from transformers import Seq2SeqTrainingArguments
 from transformers.training_args import _convert_str_dict
@@ -74,9 +74,69 @@ class RayArguments:
 
 
 @dataclass
-class TrainingArguments(RayArguments, Seq2SeqTrainingArguments):
+class LayerSkipArguments:
+    r"""Arguments pertaining to the layer skip training."""
+
+    layerskip_training: bool = field(
+        default=False,
+        metadata={"help": "Whether to use layer skip training."},
+    )
+    # 1. Early exit loss parameters.
+    always_train_last_layer: bool = field(
+        default=True,
+        metadata={"help": "Whether to always train the last layer."},
+    )
+    early_exit_loss_curriculum: str = field(
+        default="rotational",
+        metadata={
+            "help": "The loss curriculum for early exit. Only supports 'rotational' and 'gradual'."
+        },
+    )
+    early_exit_loss_scale: float = field(
+        default=1.0,
+        metadata={"help": "The loss scale for early exit."},
+    )
+    early_exit_loss_scale_fct: str = field(
+        default="uniform",
+        metadata={
+            "help": "The loss scale function for early exit. Only supports 'uniform', 'linear', 'sum', 'sqrt', 'inv' and 'inv_sqrt'."
+        },
+    )
+    early_exit_loss_fct: Callable = field(init=False)
+    do_output_hidden_states: str = field(default="::8", metadata={"help": "Specify which layers to early exit."})
+    # 2. Layer dropout parameters.
+    layer_dropout_prob_max: float = field(default=0.0, metadata="Maximum layer dropout probability.")
+    layer_dropout_scale_fct: str = field(default="uniform", metadata={"help": "Layer dropout scale function. Only supports 'uniform', 'exp', 'linear', 'log', 'sin', 'sigmoid' and 'step'."})
+    layer_dropout_layers: Optional[str] = field(default=None, metadata={"help": "The layers to apply layer dropout to. If None, all layers will be used."})
+
+    def __post_init__(self):
+        if not self.layerskip_training:
+            return  # skip validation if not using layer skip training
+        if self.early_exit_loss_curriculum not in ["rotational", "gradual"]:
+            raise ValueError(
+                f"early_exit_loss_curriculum must be one of ['rotational', 'gradual'], got {self.early_exit_loss_curriculum}"
+            )
+        if self.early_exit_loss_scale_fct not in [
+            "uniform",
+            "linear",
+            "sum",
+            "sqrt",
+            "inv",
+            "inv_sqrt",
+        ]:
+            raise ValueError(
+                f"loss_scale_fct must be one of ['uniform', 'linear', 'sum', 'sqrt', 'inv', 'inv_sqrt'], got {self.early_exit_loss_scale_fct}"
+            )
+        if not 0 <= self.early_exit_loss_scale <= 1:
+            raise ValueError(
+                f"early_exit_loss_scale must be in [0, 1], got {self.early_exit_loss_scale}"
+            )
+
+@dataclass
+class TrainingArguments(LayerSkipArguments, RayArguments, Seq2SeqTrainingArguments):
     r"""Arguments pertaining to the trainer."""
 
     def __post_init__(self):
         Seq2SeqTrainingArguments.__post_init__(self)
         RayArguments.__post_init__(self)
+        LayerSkipArguments.__post_init__(self)
