@@ -21,6 +21,7 @@ from transformers.training_args import _convert_str_dict
 
 from ..extras.misc import use_ray
 
+from layerskip import EARLY_EXIT_LOSS_SCALE_FUNCTIONS
 
 @dataclass
 class RayArguments:
@@ -96,16 +97,16 @@ class LayerSkipArguments:
         default=1.0,
         metadata={"help": "The loss scale for early exit."},
     )
-    early_exit_loss_scale_fct: str = field(
+    early_exit_loss_scale_fct_name: str = field(
         default="uniform",
         metadata={
             "help": "The loss scale function for early exit. Only supports 'uniform', 'linear', 'sum', 'sqrt', 'inv' and 'inv_sqrt'."
         },
     )
-    early_exit_loss_fct: Callable = field(init=False)
-    do_output_hidden_states: str = field(default="::8", metadata={"help": "Specify which layers to early exit."})
+    early_exit_loss_scale_fct: Callable = field(init=False)
+    do_output_hidden_states: str = field(default="::16", metadata={"help": "Specify which layers to early exit."})
     # 2. Layer dropout parameters.
-    layer_dropout_prob_max: float = field(default=0.0, metadata="Maximum layer dropout probability.")
+    layer_dropout_prob_max: float = field(default=0.0, metadata={"help":"Maximum layer dropout probability."})
     layer_dropout_scale_fct: str = field(default="uniform", metadata={"help": "Layer dropout scale function. Only supports 'uniform', 'exp', 'linear', 'log', 'sin', 'sigmoid' and 'step'."})
     layer_dropout_layers: Optional[str] = field(default=None, metadata={"help": "The layers to apply layer dropout to. If None, all layers will be used."})
 
@@ -116,7 +117,7 @@ class LayerSkipArguments:
             raise ValueError(
                 f"early_exit_loss_curriculum must be one of ['rotational', 'gradual'], got {self.early_exit_loss_curriculum}"
             )
-        if self.early_exit_loss_scale_fct not in [
+        if self.early_exit_loss_scale_fct_name not in [
             "uniform",
             "linear",
             "sum",
@@ -125,12 +126,14 @@ class LayerSkipArguments:
             "inv_sqrt",
         ]:
             raise ValueError(
-                f"loss_scale_fct must be one of ['uniform', 'linear', 'sum', 'sqrt', 'inv', 'inv_sqrt'], got {self.early_exit_loss_scale_fct}"
+                f"loss_scale_fct_name must be one of ['uniform', 'linear', 'sum', 'sqrt', 'inv', 'inv_sqrt'], got {self.early_exit_loss_scale_fct_name}"
             )
         if not 0 <= self.early_exit_loss_scale <= 1:
             raise ValueError(
                 f"early_exit_loss_scale must be in [0, 1], got {self.early_exit_loss_scale}"
             )
+        # Initialize the early exit loss scale function here.
+        self.early_exit_loss_scale_fct = EARLY_EXIT_LOSS_SCALE_FUNCTIONS[self.early_exit_loss_scale_fct_name]
 
 @dataclass
 class TrainingArguments(LayerSkipArguments, RayArguments, Seq2SeqTrainingArguments):
