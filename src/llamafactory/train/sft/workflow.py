@@ -26,12 +26,12 @@ from ...model import load_model, load_tokenizer
 from ..trainer_utils import create_modelcard_and_push
 from .metric import ComputeAccuracy, ComputeSimilarity, eval_logit_processor
 from .trainer import CustomSeq2SeqTrainer
-
+from .layerskip_trainer import LayerSkipTrainer
 
 if TYPE_CHECKING:
     from transformers import Seq2SeqTrainingArguments, TrainerCallback
 
-    from ...hparams import DataArguments, FinetuningArguments, GeneratingArguments, ModelArguments
+    from ...hparams import DataArguments, FinetuningArguments, GeneratingArguments, ModelArguments, TrainingArguments
 
 
 logger = get_logger(__name__)
@@ -40,7 +40,7 @@ logger = get_logger(__name__)
 def run_sft(
     model_args: "ModelArguments",
     data_args: "DataArguments",
-    training_args: "Seq2SeqTrainingArguments",
+    training_args: "TrainingArguments",
     finetuning_args: "FinetuningArguments",
     generating_args: "GeneratingArguments",
     callbacks: Optional[list["TrainerCallback"]] = None,
@@ -79,17 +79,30 @@ def run_sft(
     gen_kwargs["pad_token_id"] = tokenizer.pad_token_id
 
     # Initialize our Trainer
-    trainer = CustomSeq2SeqTrainer(
-        model=model,
-        args=training_args,
-        finetuning_args=finetuning_args,
-        data_collator=data_collator,
-        callbacks=callbacks,
-        gen_kwargs=gen_kwargs,
-        **dataset_module,
-        **tokenizer_module,
-        **metric_module,
-    )
+    if training_args.layerskip_training:
+        trainer = LayerSkipTrainer(
+            model=model,
+            args=training_args,
+            finetuning_args=finetuning_args,
+            data_collator=data_collator,
+            callbacks=callbacks,
+            gen_kwargs=gen_kwargs,
+            **dataset_module,
+            **tokenizer_module,
+            **metric_module,
+        )
+    else:
+        trainer = CustomSeq2SeqTrainer(
+            model=model,
+            args=training_args,
+            finetuning_args=finetuning_args,
+            data_collator=data_collator,
+            callbacks=callbacks,
+            gen_kwargs=gen_kwargs,
+            **dataset_module,
+            **tokenizer_module,
+            **metric_module,
+        )
 
     # Training
     if training_args.do_train:
