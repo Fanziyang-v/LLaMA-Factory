@@ -110,14 +110,17 @@ def early_exit_loss(
     hidden_states_stacked = torch.stack(hidden_states)
     # Shape: [e, b, s, out_dim]
     logits_early = model.lm_head(hidden_states_stacked)
+
+    # * shift logits and labels here.
+    shift_logits_early = logits_early[..., :-1, :].contiguous()
+    shift_labels = labels[..., 1:].contiguous()
     # Shape: [e*b*s, out_dim]
-    logits_early = logits_early.reshape(-1, logits_early.size(-1))
-    logits_early = logits_early.contiguous()
+    shift_logits_early = shift_logits_early.reshape(-1, shift_logits_early.size(-1))
+    shift_logits_early = shift_logits_early.contiguous()
     # Shape: [e*b*s]
-    labels_repeated = labels.repeat(e, 1).reshape(-1)
-    # TODO: shift logits and labels here.
+    shift_labels_repeated = shift_labels.repeat(e, 1).reshape(-1)
     # Compute early losses: Shape: [e*b*s]
-    losses_early = batch_loss_fn(logits_early, labels_repeated)
+    losses_early = batch_loss_fn(shift_logits_early, shift_labels_repeated)
     # Shape: [e, b*s]
     losses_early = losses_early.view(e, -1)
     # Shape: [e]

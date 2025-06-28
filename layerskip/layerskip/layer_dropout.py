@@ -88,7 +88,22 @@ class LayerDropout(torch.nn.Module):
 
         if ind_selected.numel() > 0:
             x_selected = torch.index_select(input, self.dim, ind_selected)
-            out_selected = function(x_selected, *args, **kwargs)
+            # # Update attention_mask.
+            # attention_mask = args[0] if len(args) > 0 and isinstance(args[0], torch.Tensor) else None
+            # attention_mask = attention_mask if attention_mask is not None else kwargs.get("attention_mask", None)
+            # if attention_mask is not None:
+            #     print(attention_mask.shape)
+            # attention_mask_selected = (
+            #     torch.index_select(attention_mask, self.dim, ind_selected)
+            #     if attention_mask is not None
+            #     else None
+            # )
+            # # Update the args to include the selected attention mask if it exists.
+            # args = (attention_mask_selected,) + args[1:] if attention_mask_selected is not None else args
+            # Output is a tuple, the first element is `hidden_states`.
+            outputs = function(x_selected, *args, **kwargs)
+            assert type(outputs) is tuple, "The function should return a tuple."
+            out_selected = outputs[0]
 
         out = input.clone()
         assert (
@@ -96,7 +111,7 @@ class LayerDropout(torch.nn.Module):
         ), "Currently only supporting dropping elements along the 0th dimension"
         if ind_selected.numel() > 0:
             out[ind_selected] = out_selected
-        return out
+        return (out,) + outputs[1:]
 
 
 class ModuleLayerDropoutWrapper(torch.nn.Module):
