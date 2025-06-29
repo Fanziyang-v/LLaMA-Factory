@@ -86,13 +86,14 @@ class LayerDropout(torch.nn.Module):
         self.inferred = 1 - torch.mean(skip)
         ind_selected = (skip == 0).nonzero().squeeze()
 
+        outputs = None
         if ind_selected.numel() > 0:
             x_selected = torch.index_select(input, self.dim, ind_selected)
             # Update attention_mask.
             attention_mask = args[0] if len(args) > 0 and isinstance(args[0], torch.Tensor) else None
             attention_mask = attention_mask if attention_mask is not None else kwargs.get("attention_mask", None)
-            if attention_mask is not None:
-                print(attention_mask.shape)
+            # if attention_mask is not None:
+            #     print(attention_mask.shape)
             attention_mask_selected = (
                 torch.index_select(attention_mask, self.dim, ind_selected)
                 if attention_mask is not None
@@ -111,7 +112,9 @@ class LayerDropout(torch.nn.Module):
         ), "Currently only supporting dropping elements along the 0th dimension"
         if ind_selected.numel() > 0:
             out[ind_selected] = out_selected
-        return (out,) + outputs[1:]
+        if outputs is not None:
+            return (out,) + outputs[1:]
+        return (out,) # special case.
 
 
 class ModuleLayerDropoutWrapper(torch.nn.Module):

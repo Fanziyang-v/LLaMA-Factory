@@ -13,7 +13,7 @@ from typing import Callable, Dict, List, Optional
 import numpy as np
 import torch
 
-from transformers import LlamaForCausalLM
+from transformers import LlamaForCausalLM, Qwen2ForCausalLM
 
 
 def uniform_loss_scale(
@@ -82,7 +82,7 @@ def early_exit_loss(
     and then scaling and summing these losses.
 
     Args:
-        model (LlamaForCausalLM): The model to compute the early exit loss for.
+        model (Union[LlamaForCausalLM, Qwen2ForCausalLM]): The model to compute the early exit loss for.
         hidden_states_dict (Dict[int, torch.Tensor]): A dictionary of hidden states,
             where each key is a layer index and each value is a tensor of shape [b, s, d].
         labels (torch.Tensor): The labels for the input data.
@@ -93,7 +93,7 @@ def early_exit_loss(
     Returns:
         torch.Tensor: The computed early exit loss.
     """
-    if not isinstance(model, LlamaForCausalLM):
+    if not isinstance(model, (LlamaForCausalLM, Qwen2ForCausalLM)):
         raise NotImplementedError(
             f"Early exit loss is not implemented for {type(model)} yet."
         )
