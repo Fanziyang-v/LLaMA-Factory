@@ -40,7 +40,7 @@ from layerskip.early_exit_loss import (
     early_exit_loss,
 )
 
-from transformers import LlamaForCausalLM
+from transformers import LlamaForCausalLM, Qwen2ForCausalLM
 
 if TYPE_CHECKING:
     from torch.utils.data import Dataset
@@ -102,11 +102,11 @@ class LayerSkipTrainer(Seq2SeqTrainer):
         self.layer_dropout_scale_fct = args.layer_dropout_scale_fct
         self.layer_dropout_layers = args.layer_dropout_layers
 
-        self.num_hidden_layers = len(self.accelerator.unwrap_model(self.model).model.layers)
+        self.num_hidden_layers = len(self._get_llama_or_qwen_model(self.model).model.layers)
         # Apply layer dropout to the model.
         if self.layer_dropout_prob_max > 0:
             prepare_layer_dropout(
-                layers=self._get_llama_model(self.model).model.layers,
+                layers=self._get_llama_or_qwen_model(self.model).model.layers,
                 prob_max=self.layer_dropout_prob_max,
                 prob_layer_scale=self.layer_dropout_scale_fct,
                 layers_str=self.layer_dropout_layers,
@@ -151,23 +151,17 @@ class LayerSkipTrainer(Seq2SeqTrainer):
                     last_step=self.state.global_step,
                 )
         labels = inputs.pop("labels")
-        # Output is a tuple, containing `hidden_states_dict` and `labels`.
-        # print(inputs.keys())
-        # hidden_states_dict = model(**inputs, layerskip_forward=True, do_output_hidden_states=self.early_exit_curriculum.get())
-        llama_model = self._get_llama_model(model)
-        if "attention_mask" in inputs:
-            attn_mask = inputs["attention_mask"]
-            print(f"Attention mask shape: {attn_mask.shape}")
+        _model = self._get_llama_or_qwen_model(model)
         outputs = model(**inputs, output_hidden_states=True)
         do_output_hidden_states = self.early_exit_curriculum.get()
         hidden_states_dict: Dict[int, torch.Tensor] = {}
         for layer_idx, hidden_states in enumerate(outputs.hidden_states[1:]):
-            hidden_states = hidden_states if layer_idx != self.num_hidden_layers - 1 else llama_model.model.norm(hidden_states)
+            hidden_states = hidden_states if layer_idx != self.num_hidden_layers - 1 else _model.model.norm(hidden_states)
             if do_output_hidden_states[layer_idx]:
                 hidden_states_dict[layer_idx] = hidden_states
 
         loss = early_exit_loss(
-            llama_model,
+            _model,
             hidden_states_dict=hidden_states_dict,
             labels=labels,
             loss_fn=torch.nn.CrossEntropyLoss(),
@@ -179,12 +173,12 @@ class LayerSkipTrainer(Seq2SeqTrainer):
 
         return loss
 
-    def _get_llama_model(self, model: torch.nn.Module) -> LlamaForCausalLM:
+    def _get_llama_or_qwen_model(self, model: torch.nn.Module) -> Union[LlamaForCausalLM, Qwen2ForCausalLM]:
         r"""Get the LlamaForCausalLM model from the trainer."""
         for module in model.modules():
-            if isinstance(module, LlamaForCausalLM):
+            if isinstance(module, (LlamaForCausalLM, Qwen2ForCausalLM)):
                 return module
-        raise AssertionError(f"LlamaForCausalLM model not found in {model.__class__.__name__}.")
+        raise AssertionError(f"LlamaForCausalLM or Qwen2ForCausalLM model not found in {model.__class__.__name__}.")
 
 
     @override
