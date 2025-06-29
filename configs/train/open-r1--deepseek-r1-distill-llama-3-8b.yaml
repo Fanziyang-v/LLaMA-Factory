@@ -1,0 +1,101 @@
+### model
+model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: lora
+deepspeed: examples/deepspeed/ds_z2_config.json  # choices: [ds_z0_config.json, ds_z2_config.json, ds_z3_config.json]
+lora_rank: 64
+
+### dataset
+dataset: open_r1__mixture_of_thoughts_code,open_r1__mixture_of_thoughts_math
+dataset_dir: data
+template: llama3
+cutoff_len: 4096
+# max_samples: 100 # debug.
+overwrite_cache: true
+preprocessing_num_workers: 16
+dataloader_num_workers: 4
+
+### output
+output_dir: checkpoints/open-r1--deepseek-r1-distill-llama-3-8b/full/sft
+logging_steps: 1
+save_steps: 500
+plot_loss: true
+overwrite_output_dir: true
+save_only_model: false
+report_to: none  # choices: [none, wandb, tensorboard, swanlab, mlflow]
+
+### train
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 16
+gradient_checkpointing: true
+learning_rate: 4.0e-5
+num_train_epochs: 5.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+bf16: true
+ddp_timeout: 180000000
+resume_from_checkpoint: null
+max_grad_norm: 0.2
+flash_attn: fa2
+
+
+
+### layerskip
+layerskip_training: true
+always_train_last_layer: true
+early_exit_loss_curriculum: rotational
+early_exit_loss_scale: 1.0
+early_exit_loss_scale_fct_name: sum
+do_output_hidden_states: ::16
+layer_dropout_prob_max: 0.0
+layer_dropout_scale_fct: exp
+layer_dropout_layers: null
+
+### eval
+# eval_dataset: alpaca_en_demo
+# val_size: 0.1
+# per_device_eval_batch_size: 1
+# eval_strategy: steps
+# eval_steps: 500
+
+# llamafactory-cli train \
+#     --stage sft \
+#     --do_train True \
+#     --model_name_or_path meta-llama/Meta-Llama-3.1-8B-Instruct \
+#     --preprocessing_num_workers 16 \
+#     --finetuning_type lora \
+#     --template llama3 \
+#     --rope_scaling llama3 \
+#     --flash_attn fa2 \
+#     --dataset_dir data \
+#     --dataset open_r1__mixture_of_thoughts_code,open_r1__mixture_of_thoughts_math \
+#     --cutoff_len 2048 \
+#     --learning_rate 4e-05 \
+#     --num_train_epochs 5.0 \
+#     --max_samples 100000 \
+#     --per_device_train_batch_size 2 \
+#     --gradient_accumulation_steps 8 \
+#     --lr_scheduler_type cosine \
+#     --max_grad_norm 0.2 \
+#     --logging_steps 5 \
+#     --save_steps 100 \
+#     --warmup_steps 0 \
+#     --packing False \
+#     --enable_thinking False \
+#     --report_to wandb \
+#     --output_dir saves/Llama-3.1-8B-Instruct/lora/train_2025-06-28-20-10-55 \
+#     --bf16 True \
+#     --plot_loss True \
+#     --trust_remote_code True \
+#     --ddp_timeout 180000000 \
+#     --include_num_input_tokens_seen True \
+#     --optim adamw_torch \
+#     --lora_rank 8 \
+#     --lora_alpha 16 \
+#     --lora_dropout 0 \
+#     --lora_target all \
+#     --deepspeed cache/ds_z3_config.json 
