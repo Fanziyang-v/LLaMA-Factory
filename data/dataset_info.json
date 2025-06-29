@@ -1,20 +1,16 @@
 {
   "open_r1__mixture_of_thoughts_code": {
-    "file_name": "open-r1/open-r1--mixture-of-thoughts-code.json",
+    "file_name": "open-r1/code",
     "formatting": "sharegpt",
     "columns": {
-      "messages": "messages",
-      "num_tokens": "num_tokens",
-      "source": "source"
+      "messages": "conversations"
     }
   },
   "open_r1__mixture_of_thoughts_math": {
-    "file_name": "open-r1/open-r1--mixture-of-thoughts-math.json",
+    "file_name": "open-r1/math",
     "formatting": "sharegpt",
     "columns": {
-      "messages": "messages",
-      "num_tokens": "num_tokens",
-      "source": "source"
+      "messages": "conversations"
     }
   },
   "identity": {
